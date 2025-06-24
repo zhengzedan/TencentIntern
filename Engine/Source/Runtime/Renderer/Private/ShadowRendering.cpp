@@ -222,6 +222,10 @@ IMPLEMENT_SHADER_TYPE(,FShadowProjectionNoTransformVS,TEXT("/Engine/Private/Shad
 
 IMPLEMENT_SHADER_TYPE(,FShadowVolumeBoundProjectionVS,TEXT("/Engine/Private/ShadowProjectionVertexShader.usf"),TEXT("Main"),SF_Vertex);
 
+IMPLEMENT_SHADER_TYPE(, FScreenSpaceShadowsProjectionVS, TEXT("/Engine/Private/ScreenSpaceShadowsVertexShader.usf"), TEXT("Main"), SF_Vertex);
+
+IMPLEMENT_SHADER_TYPE(,FScreenSpaceShadowsProjectionPS, TEXT("/Engine/Private/ScreenSpaceShadowsPixelShader.usf"),TEXT("Main"),SF_Pixel);
+
 /**
  * Implementations for TShadowProjectionPS.  
  */
@@ -1587,10 +1591,10 @@ bool FSceneRenderer::RenderShadowProjections(FRHICommandListImmediate& RHICmdLis
 			RPInfo.DepthStencilRenderTarget.ExclusiveDepthStencil = FExclusiveDepthStencil::DepthRead_StencilWrite;
 
 			TransitionRenderPassTargets(RHICmdList, RPInfo);
-			RHICmdList.BeginRenderPass(RPInfo, TEXT("RenderShadowProjection"));
-			RenderShadowMask(nullptr);
-			RHICmdList.SetScissorRect(false, 0, 0, 0, 0);
-			RHICmdList.EndRenderPass();
+			// RHICmdList.BeginRenderPass(RPInfo, TEXT("RenderShadowProjection"));
+			// RenderShadowMask(nullptr);
+			// RHICmdList.SetScissorRect(false, 0, 0, 0, 0);
+			// RHICmdList.EndRenderPass();
 		}
 
 		// SubPixelShadow
@@ -1648,6 +1652,69 @@ bool FSceneRenderer::RenderShadowProjections(FRHICommandListImmediate& RHICmdLis
 
 	return true;
 }
+
+bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdList, const FLightSceneInfo* LightSceneInfo) {
+	FVisibleLightInfo& VisibleLightInfo = VisibleLightInfos[LightSceneInfo->Id];
+	FSceneRenderTargets& SceneContex = FSceneRenderTargets::Get(RHICmdList);
+
+	// Gather up our work real quick so we can do everything in one renderpass later.
+	// #todo-renderpasses How many ShadowsToProject do we have usually?
+	TArray<FProjectedShadowInfo*> DistanceFieldShadows;
+	TArray<FProjectedShadowInfo*> NormalShadows;
+
+	for (int32 ShadowIndex = 0; ShadowIndex < VisibleLightInfo.ShadowsToProject.Num(); ShadowIndex++)
+	{
+		FProjectedShadowInfo* ProjectedShadowInfo = VisibleLightInfo.ShadowsToProject[ShadowIndex];
+		if (ProjectedShadowInfo->bRayTracedDistanceField)
+		{
+			DistanceFieldShadows.Add(ProjectedShadowInfo);
+		}
+		else
+		{
+			NormalShadows.Add(ProjectedShadowInfo);
+		}
+	}
+
+	if (NormalShadows.Num() > 0) {
+		for (int32 ViewIndex = 0; ViewIndex < Views.Num(); ViewIndex++) 
+		{
+			const FViewInfo& View = Views[ViewIndex];
+
+			for (int32 ShadowIndex = 0; ShadowIndex < NormalShadows.Num(); ShadowIndex++)
+			{
+				FProjectedShadowInfo* ProjectedShadowInfo = NormalShadows[ShadowIndex];
+
+				if (ProjectedShadowInfo->bAllocated)
+				{
+					FShadowProjectionVertexShaderInterface* ShadowProjVS = nullptr;
+					FShadowProjectionPixelShaderInterface* ShadowProjPS = nullptr;
+
+					uint32 LocalQuality = GetShadowQuality();
+					const bool bSubPixelSupport = false;
+					
+					ShadowProjVS = View.ShaderMap->GetShader<FScreenSpaceShadowsProjectionVS>();
+					ShadowProjPS = View.ShaderMap->GetShader<FScreenSpaceShadowsProjectionPS>();
+
+					FGraphicsPipelineStateInitializer GraphicsPSOInit;
+					RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
+					GraphicsPSOInit.BlendState = TStaticBlendState<CW_GREEN, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha>::GetRHI();
+					GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CCW>::GetRHI();
+					GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
+					GraphicsPSOInit.PrimitiveType = PT_TriangleList;
+
+					GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GetVertexDeclarationFVector4();
+					GraphicsPSOInit.BoundShaderState.VertexShaderRHI = GETSAFERHISHADER_VERTEX(ShadowProjVS);
+					GraphicsPSOInit.BoundShaderState.PixelShaderRHI = GETSAFERHISHADER_PIXEL(ShadowProjPS);
+					
+					SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
+				}
+			}
+		}
+	}
+
+	return true;
+	
+}
 	
 bool FDeferredShadingSceneRenderer::RenderShadowProjections(FRHICommandListImmediate& RHICmdList, const FLightSceneInfo* LightSceneInfo, IPooledRenderTarget* ScreenShadowMaskTexture, IPooledRenderTarget* ScreenShadowMaskSubPixelTexture, const FHairStrandsDatas* HairDatas, bool& bInjectedTranslucentVolume)
 {
@@ -1660,10 +1727,29 @@ bool FDeferredShadingSceneRenderer::RenderShadowProjections(FRHICommandListImmed
 
 	FVisibleLightInfo& VisibleLightInfo = VisibleLightInfos[LightSceneInfo->Id];
 
-	FSceneRenderer::RenderShadowProjections(RHICmdList, LightSceneInfo, ScreenShadowMaskTexture, ScreenShadowMaskSubPixelTexture, false, false, HairDatas ? &HairDatas->HairVisibilityViews : nullptr);
+	FSceneRenderer::RenderShadowProjections(RHICmdList, LightSceneInfo);
 
-	// add a test shader 
+	// add a simple shader 
+	{
+		SCOPED_DRAW_EVENT(RHICmdList, ScreenSpaceShadows);
+		FSceneRenderTargets& SceneContext = FSceneRenderTargets::Get(RHICmdList);
+		FRHIRenderPassInfo RPInfo(ScreenShadowMaskTexture->GetRenderTargetItem().TargetableTexture, ERenderTargetActions::Load_Store);
+		RPInfo.DepthStencilRenderTarget.Action = MakeDepthStencilTargetActions(ERenderTargetActions::Load_DontStore, ERenderTargetActions::Load_Store);
+		RPInfo.DepthStencilRenderTarget.DepthStencilTarget = SceneContext.GetSceneDepthSurface();
+		RPInfo.DepthStencilRenderTarget.ExclusiveDepthStencil = FExclusiveDepthStencil::DepthNop_StencilNop;
 
+		TransitionRenderPassTargets(RHICmdList, RPInfo);
+		RHICmdList.BeginRenderPass(RPInfo, TEXT("ScreenSpaceShadows"));
+		RHICmdList.SetStencilRef(0);
+
+		FSceneRenderer::RenderScreenSpaceShadows(RHICmdList, LightSceneInfo, ScreenShadowMaskTexture, ScreenShadowMaskSubPixelTexture, false, false, HairDatas ? &HairDatas->HairVisibilityViews : nullptr);
+		
+		RHICmdList.SetStreamSource(0, GClearVertexBuffer.VertexBufferRHI, 0);
+		RHICmdList.DrawPrimitive(0, 2, 1);
+		
+		RHICmdList.SetScissorRect(false, 0, 0, 0, 0);
+		RHICmdList.EndRenderPass();
+	}
 	// end add
 
 	checkSlow(RHICmdList.IsOutsideRenderPass());

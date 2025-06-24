@@ -1617,6 +1617,8 @@ protected:
 
 	bool RenderShadowProjections(FRHICommandListImmediate& RHICmdList, const FLightSceneInfo* LightSceneInfo, IPooledRenderTarget* ScreenShadowMaskTexture, IPooledRenderTarget* ScreenShadowMaskSubPixelTexture, bool bProjectingForForwardShading, bool bMobileModulatedProjections, const struct FHairStrandsVisibilityViews* InHairVisibilityViews);
 
+	bool RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdList, const FLightSceneInfo* LightSceneInfo);
+
 	/** Finds a matching cached preshadow, if one exists. */
 	TRefCountPtr<FProjectedShadowInfo> GetCachedPreshadow(
 		const FLightPrimitiveInteraction* InParentInteraction,

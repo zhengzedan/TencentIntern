@@ -650,6 +650,25 @@ public:
 };
 
 /**
+* A SSS Vertex Shader 
+*/
+class FScreenSpaceShadowsProjectionVS : public FShadowProjectionVertexShaderInterface
+{
+	DECLARE_SHADER_TYPE(FScreenSpaceShadowsProjectionVS, Global);
+public:
+	FScreenSpaceShadowsProjectionVS() {}
+	FScreenSpaceShadowsProjectionVS(const ShaderMetaType::CompiledShaderInitializerType& Initializer)
+		: FShadowProjectionVertexShaderInterface(Initializer)
+	{ }
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return true;
+	}
+
+	void SetParameters(FRHICommandList& RHICmdList, const FSceneView& View, const FProjectedShadowInfo* ShadowInfo) override {}
+};
+
+/**
 * A vertex shader for projecting a shadow depth buffer onto the scene.
 */
 class FShadowVolumeBoundProjectionVS : public FShadowProjectionVertexShaderInterface
@@ -762,6 +781,33 @@ public:
 		FGlobalShader::SetParameters<FViewUniformShaderParameters>(RHICmdList, GetPixelShader(), View.ViewUniformBuffer);
 	}
 
+};
+
+/*
+* A SSS Pixel Shader
+*/
+class FScreenSpaceShadowsProjectionPS : public FShadowProjectionPixelShaderInterface
+{
+	DECLARE_SHADER_TYPE(FScreenSpaceShadowsProjectionPS, Global);
+public:
+	FScreenSpaceShadowsProjectionPS() : FShadowProjectionPixelShaderInterface() {}
+	FScreenSpaceShadowsProjectionPS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) :
+		FShadowProjectionPixelShaderInterface(Initializer)
+	{
+	}
+
+	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
+	{
+		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
+	}
+
+	virtual void SetParameters(
+		FRHICommandList& RHICmdList,
+		int32 ViewIndex,
+		const FSceneView& View,
+		const FHairStrandsVisibilityData* HairVisibilityData,
+		const FProjectedShadowInfo* ShadowInfo) override
+	{}
 };
 
 /** Shadow projection parameters used by multiple shaders. */
