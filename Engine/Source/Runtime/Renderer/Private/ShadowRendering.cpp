@@ -1653,7 +1653,7 @@ bool FSceneRenderer::RenderShadowProjections(FRHICommandListImmediate& RHICmdLis
 	return true;
 }
 
-bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdList, const FLightSceneInfo* LightSceneInfo) {
+bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdList, const FLightSceneInfo* LightSceneInfo, IPooledRenderTarget* ScreenShadowMaskTexture, IPooledRenderTarget* ScreenShadowMaskSubPixelTexture, bool bProjectingForForwardShading, bool bMobileModulatedProjections, const FHairStrandsVisibilityViews* InHairVisibilityViews) {
 	FVisibleLightInfo& VisibleLightInfo = VisibleLightInfos[LightSceneInfo->Id];
 	FSceneRenderTargets& SceneContex = FSceneRenderTargets::Get(RHICmdList);
 
@@ -1727,7 +1727,7 @@ bool FDeferredShadingSceneRenderer::RenderShadowProjections(FRHICommandListImmed
 
 	FVisibleLightInfo& VisibleLightInfo = VisibleLightInfos[LightSceneInfo->Id];
 
-	FSceneRenderer::RenderShadowProjections(RHICmdList, LightSceneInfo);
+	FSceneRenderer::RenderShadowProjections(RHICmdList, LightSceneInfo, ScreenShadowMaskTexture, ScreenShadowMaskSubPixelTexture, false, false, HairDatas ? &HairDatas->HairVisibilityViews : nullptr);
 
 	// add a simple shader 
 	{
