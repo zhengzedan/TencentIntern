@@ -809,7 +809,9 @@ public:
 		const FSceneView& View,
 		const FHairStrandsVisibilityData* HairVisibilityData,
 		const FProjectedShadowInfo* ShadowInfo) override
-	{}
+	{
+		FShadowProjectionPixelShaderInterface::SetParameters(RHICmdList, ViewIndex, View, HairVisibilityData, ShadowInfo);
+	}
 };
 
 /** Shadow projection parameters used by multiple shaders. */

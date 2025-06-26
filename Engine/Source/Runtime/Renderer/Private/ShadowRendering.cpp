@@ -1548,6 +1548,7 @@ bool FSceneRenderer::RenderShadowProjections(FRHICommandListImmediate& RHICmdLis
 				LightSceneInfo->Proxy->SetScissorRect(RHICmdList, View, View.ViewRect);
 
 				Scene->UniformBuffers.UpdateViewUniformBuffer(View);
+				check(View.ViewUniformBuffer != nullptr);
 
 				// Project the shadow depth buffers onto the scene.
 				for (int32 ShadowIndex = 0; ShadowIndex < NormalShadows.Num(); ShadowIndex++)
@@ -1687,10 +1688,16 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 
 				if (ProjectedShadowInfo->bAllocated)
 				{
-					//FSceneRenderTargets& SceneContext = FSceneRenderTargets::Get(RHICmdList);
+					FSceneRenderTargets& SceneContext = FSceneRenderTargets::Get(RHICmdList);
+					LightSceneInfo->Proxy->SetScissorRect(RHICmdList, View, View.ViewRect);
+					Scene->UniformBuffers.UpdateViewUniformBuffer(View);
+
+					check(View.ViewUniformBuffer != nullptr);
+
 					
 					/*const FIntVector Size = ScreenShadowMaskTexture->GetRenderTargetItem().TargetableTexture->GetSizeXYZ();
 					RHICmdList.SetViewport(0, 0, 0.0f, Size.X, Size.Y, 1.0f);*/
+					RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
 
 					FGraphicsPipelineStateInitializer GraphicsPSOInit;
 					RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
@@ -1708,6 +1715,7 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 					
 					//ShadowProjVS = View.ShaderMap->GetShader<FScreenSpaceShadowsProjectionVS>();
 					ShadowProjPS = View.ShaderMap->GetShader<FScreenSpaceShadowsProjectionPS>();
+					ShadowProjPS->SetParameters(RHICmdList, ViewIndex, View, nullptr, nullptr);
 
 					
 					FPixelShaderUtils::InitFullscreenPipelineState(RHICmdList, View.ShaderMap, ShadowProjPS, GraphicsPSOInit);
@@ -1764,9 +1772,9 @@ bool FDeferredShadingSceneRenderer::RenderShadowProjections(FRHICommandListImmed
 
 		//TransitionRenderPassTargets(RHICmdList, RPInfo);
 		//RHICmdList.SetStreamSource(
-		//	0,                              // ÊäÈë²Û£¨Slot 0£©
-		//	GScreenRectangleVertexBuffer.VertexBufferRHI, // ¶¥µã»º³åÇø
-		//	0                               // Æ«ÒÆÁ¿£¨×Ö½Ú£©
+		//	0,                              // è¾“å…¥æ§½ï¼ˆSlot 0ï¼‰
+		//	GScreenRectangleVertexBuffer.VertexBufferRHI, // é¡¶ç‚¹ç¼“å†²åŒº
+		//	0                               // åç§»é‡ï¼ˆå­—èŠ‚ï¼‰
 		//);
 
 		FSceneRenderer::RenderScreenSpaceShadows(RHICmdList, LightSceneInfo, ScreenShadowMaskTexture, ScreenShadowMaskSubPixelTexture, false, false, HairDatas ? &HairDatas->HairVisibilityViews : nullptr);
