@@ -788,29 +788,23 @@ public:
 /*
 * A SSS Pixel Shader
 */
-class FScreenSpaceShadowsProjectionPS : public FShadowProjectionPixelShaderInterface
+class FScreenSpaceShadowsProjectionPS : public FGlobalShader
 {
-	DECLARE_SHADER_TYPE(FScreenSpaceShadowsProjectionPS, Global);
-public:
-	FScreenSpaceShadowsProjectionPS() : FShadowProjectionPixelShaderInterface() {}
-	FScreenSpaceShadowsProjectionPS(const ShaderMetaType::CompiledShaderInitializerType& Initializer) :
-		FShadowProjectionPixelShaderInterface(Initializer)
-	{
-	}
+	DECLARE_GLOBAL_SHADER(FScreenSpaceShadowsProjectionPS);
+	SHADER_USE_PARAMETER_STRUCT(FScreenSpaceShadowsProjectionPS, FGlobalShader);
+
+	//// 定义参数结构
+	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)  // 自动绑定 View 的 Uniform Buffer
+		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, ShadowMap)  // 绑定纹理和采样器（示例：阴影贴图）
+		SHADER_PARAMETER_SAMPLER(SamplerState, ShadowSampler)
+		RENDER_TARGET_BINDING_SLOTS() // 自动处理 RenderTarget 必须包含 RenderTarget 绑定槽
+	END_SHADER_PARAMETER_STRUCT()
+
 
 	static bool ShouldCompilePermutation(const FGlobalShaderPermutationParameters& Parameters)
 	{
 		return IsFeatureLevelSupported(Parameters.Platform, ERHIFeatureLevel::SM5);
-	}
-
-	virtual void SetParameters(
-		FRHICommandList& RHICmdList,
-		int32 ViewIndex,
-		const FSceneView& View,
-		const FHairStrandsVisibilityData* HairVisibilityData,
-		const FProjectedShadowInfo* ShadowInfo) override
-	{
-		FShadowProjectionPixelShaderInterface::SetParameters(RHICmdList, ViewIndex, View, HairVisibilityData, ShadowInfo);
 	}
 };
 

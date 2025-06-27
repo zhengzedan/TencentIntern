@@ -1,10 +1,11 @@
 //#include "SSRTRayCast.ush"
 //#include "Random.ush"
 //#include "BRDF.ush"
-#include "MonteCarlo.ush"
+//#include "MonteCarlo.ush"
 #include "SceneTextureParameters.ush"
 #include "ScreenSpaceDenoise/SSDPublic.ush"
 
+Texture2D SceneColorTexture;
 
 void Main(
     in float4 SvPosition : SV_POSITION,
@@ -13,9 +14,8 @@ void Main(
 {
 
     float2 UV = SvPosition.xy * View.BufferSizeAndInvSize.zw;
-    //FGBufferData GBuffer = GetGBufferDataFromSceneTextures(UV);
-	//const float3 N = GBuffer.WorldNormal;
-    OutColor = float4(
-	UV, 0, 0, 1
-	);
+    FGBufferData GBuffer = GetGBufferDataFromSceneTextures(UV);
+	const float3 N = GBuffer.WorldNormal;
+    OutColor = float4(N, 1);
+	//OutColor = float4(UV, 0, 1);
 }

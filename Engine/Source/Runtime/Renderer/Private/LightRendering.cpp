@@ -1233,7 +1233,7 @@ void FDeferredShadingSceneRenderer::RenderLights(FRHICommandListImmediate& RHICm
 
 				FString LightNameWithLevel;
 				GetLightNameForDrawEvent(LightSceneInfo.Proxy, LightNameWithLevel);
-				SCOPED_DRAW_EVENTF(RHICmdList, EventLightPass, *LightNameWithLevel);
+				SCOPED_DRAW_EVENTF(RHICmdList, EventLightPass, *LightNameWithLevel); //  eg: Minimal_Default.DirectionLiaht_1
 
 				if (bDrawShadows)
 				{
