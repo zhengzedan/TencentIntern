@@ -1656,6 +1656,7 @@ bool FSceneRenderer::RenderShadowProjections(FRHICommandListImmediate& RHICmdLis
 	return true;
 }
 
+// Scree space shadow render function, which could be combined with shadow mapping
 bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdList, const FLightSceneInfo* LightSceneInfo, IPooledRenderTarget* ScreenShadowMaskTexture, IPooledRenderTarget* ScreenShadowMaskSubPixelTexture, bool bProjectingForForwardShading, bool bMobileModulatedProjections, const FHairStrandsVisibilityViews* InHairVisibilityViews) {
 	FVisibleLightInfo& VisibleLightInfo = VisibleLightInfos[LightSceneInfo->Id];
 	FSceneRenderTargets& SceneContext = FSceneRenderTargets::Get(RHICmdList);
@@ -1689,7 +1690,6 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 
 				if (ProjectedShadowInfo->bAllocated)
 				{
-					// RDG
 					FRDGBuilder GraphBuilder(RHICmdList);
 					TShaderMapRef<FScreenSpaceShadowsProjectionPS> ScreenSpaceShadowsPixelShader(View.ShaderMap);
 					FScreenSpaceShadowsProjectionPS::FParameters* PassParameters = GraphBuilder.AllocParameters<FScreenSpaceShadowsProjectionPS::FParameters>();
@@ -1698,22 +1698,28 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 						TEXT("ShadowMaskTexture")
 					);
 
+					// create output texture，后续可能需要改为 UAV 纹理
 					FRDGTextureDesc ScreenSpaceShadowTextureDesc = FRDGTextureDesc::Create2DDesc(
-						ShadowTexture->Desc.Extent,          // 纹理尺寸
-						PF_FloatRGBA,
-						FClearValueBinding::Black,
-						TexCreate_None,
-						TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV,
+						ShadowTexture->Desc.Extent,         // texture size
+						PF_FloatRGBA,						// format, e.g PF_R8G8B8A8, PF_FloatRGBA
+						FClearValueBinding::Black,			// clear value
+						TexCreate_None,						// Flags
+						TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, // TargetableFlags
 						/* bInForceSeparateTargetAndShaderResource = */ false
 					);
-
 					FRDGTextureRef ScreenSpaceShadowTexture = GraphBuilder.CreateTexture(
 						ScreenSpaceShadowTextureDesc,
 						TEXT("ScreenSpaceShadowTexture")
 					);
+					// end create
 					
-					PassParameters->View = View.ViewUniformBuffer;
-					PassParameters->RenderTargets[0] = FRenderTargetBinding(ScreenSpaceShadowTexture, ERenderTargetLoadAction::EClear);
+					// bind gbuffer and rt
+					PassParameters->View = View.ViewUniformBuffer; // view matrix
+					PassParameters->RenderTargets[0] = FRenderTargetBinding(ScreenSpaceShadowTexture, ERenderTargetLoadAction::EClear); // render target
+					FSceneTextureParameters SceneTextures;
+					SetupSceneTextureParameters(GraphBuilder, &SceneTextures);  // standard GBuffer Texture
+					PassParameters->SceneTextures = SceneTextures;
+					// end bind
 
 					ClearUnusedGraphResources(*ScreenSpaceShadowsPixelShader, PassParameters);
 
@@ -1730,10 +1736,10 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 							GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
 							SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
 
-							// 绑定参数到着色器
+							// bind shader parameters
 							SetShaderParameters(RHICmdList, *ScreenSpaceShadowsPixelShader, ScreenSpaceShadowsPixelShader->GetPixelShader(), *PassParameters);
 
-							// 绘制全屏三角形
+							// draw
 							FPixelShaderUtils::DrawFullscreenTriangle(RHICmdList);
 
 						}
@@ -1765,7 +1771,7 @@ bool FDeferredShadingSceneRenderer::RenderShadowProjections(FRHICommandListImmed
 
 	// add a simple shader 
 	{
-		SCOPED_DRAW_EVENT(RHICmdList, ScreenSpaceShadows);
+		SCOPED_DRAW_EVENT(RHICmdList, ScreenSpaceShadows);		// add a event, which could be seen in RenderDoc
 		FRHIRenderPassInfo RPInfo(ScreenShadowMaskTexture->GetRenderTargetItem().TargetableTexture, ERenderTargetActions::DontLoad_Store);
 		RHICmdList.SetStencilRef(0);
 

@@ -29,6 +29,7 @@
 #include "LightRendering.h"
 #include "LightPropagationVolume.h"
 #include "HairStrands/HairStrandsRendering.h"
+#include "SceneTextureParameters.h"
 
 ENGINE_API IPooledRenderTarget* GetSubsufaceProfileTexture_RT(FRHICommandListImmediate& RHICmdList);
 
@@ -796,6 +797,7 @@ class FScreenSpaceShadowsProjectionPS : public FGlobalShader
 	//// 定义参数结构
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)  // 自动绑定 View 的 Uniform Buffer
+		SHADER_PARAMETER_STRUCT_INCLUDE(FSceneTextureParameters, SceneTextures)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, ShadowMap)  // 绑定纹理和采样器（示例：阴影贴图）
 		SHADER_PARAMETER_SAMPLER(SamplerState, ShadowSampler)
 		RENDER_TARGET_BINDING_SLOTS() // 自动处理 RenderTarget 必须包含 RenderTarget 绑定槽

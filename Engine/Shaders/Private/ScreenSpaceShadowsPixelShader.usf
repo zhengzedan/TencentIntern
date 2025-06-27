@@ -13,9 +13,10 @@ void Main(
 )
 {
 
-    float2 UV = SvPosition.xy * View.BufferSizeAndInvSize.zw;
+    float2 UV = SvPosition.xy * View.BufferSizeAndInvSize.zw;  // 将像素位置归一化到UV坐标，范围[0,1], View.BufferSizeAndInvSize.zw是缓冲区的倒数尺寸(如1.0/1920, 1.0/1080)
     FGBufferData GBuffer = GetGBufferDataFromSceneTextures(UV);
 	const float3 N = GBuffer.WorldNormal;
-    OutColor = float4(N, 1);
+	const float SceneDepth = GBuffer.Depth;
+    OutColor = float4(SceneDepth / 1000, 0, 0, 1);
 	//OutColor = float4(UV, 0, 1);
 }
