@@ -1689,31 +1689,6 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 
 				if (ProjectedShadowInfo->bAllocated)
 				{
-					/*FRHITexture* SceneColorTexture = SceneContext.GetSceneColor()->GetRenderTargetItem().TargetableTexture;
-					LightSceneInfo->Proxy->SetScissorRect(RHICmdList, View, View.ViewRect);
-					Scene->UniformBuffers.UpdateViewUniformBuffer(View);
-
-					check(View.ViewUniformBuffer != nullptr);
-
-					RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
-
-					FGraphicsPipelineStateInitializer GraphicsPSOInit;
-					RHICmdList.ApplyCachedRenderTargets(GraphicsPSOInit);
-					GraphicsPSOInit.BlendState = TStaticBlendState<CW_GREEN, BO_Add, BF_SourceAlpha, BF_InverseSourceAlpha>::GetRHI();
-					GraphicsPSOInit.RasterizerState = TStaticRasterizerState<FM_Solid, CM_CCW>::GetRHI();
-					GraphicsPSOInit.DepthStencilState = TStaticDepthStencilState<false, CF_Always>::GetRHI();
-					GraphicsPSOInit.PrimitiveType = PT_TriangleList;
-
-					FShadowProjectionPixelShaderInterface* ShadowProjPS = nullptr;
-					
-					ShadowProjPS = View.ShaderMap->GetShader<FScreenSpaceShadowsProjectionPS>();
-					ShadowProjPS->SetParameters(RHICmdList, ViewIndex, View, nullptr, nullptr);
-					
-					FPixelShaderUtils::InitFullscreenPipelineState(RHICmdList, View.ShaderMap, ShadowProjPS, GraphicsPSOInit);
-					GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
-					GraphicsPSOInit.BoundShaderState.PixelShaderRHI = GETSAFERHISHADER_PIXEL(ShadowProjPS);*/
-
-
 					// RDG
 					FRDGBuilder GraphBuilder(RHICmdList);
 					TShaderMapRef<FScreenSpaceShadowsProjectionPS> ScreenSpaceShadowsPixelShader(View.ShaderMap);
@@ -1766,20 +1741,6 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 
 					GraphBuilder.Execute();
 
-					//SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
-
-					//RHICmdList.SetStreamSource(0, GScreenRectangleVertexBuffer.VertexBufferRHI, 0);
-
-					//RHICmdList.DrawIndexedPrimitive(
-					//	GScreenRectangleIndexBuffer.IndexBufferRHI,
-					//	/*BaseVertexIndex=*/ 0,
-					//	/*MinIndex=*/ 0,
-					//	/*NumVertices=*/ 3,
-					//	/*StartIndex=*/ 6,
-					//	/*NumPrimitives=*/ 1,
-					//	/*NumInstances=*/ 1);
-					
-
 				}
 			}
 		}
@@ -1806,28 +1767,9 @@ bool FDeferredShadingSceneRenderer::RenderShadowProjections(FRHICommandListImmed
 	{
 		SCOPED_DRAW_EVENT(RHICmdList, ScreenSpaceShadows);
 		FRHIRenderPassInfo RPInfo(ScreenShadowMaskTexture->GetRenderTargetItem().TargetableTexture, ERenderTargetActions::DontLoad_Store);
-		//RHICmdList.BeginRenderPass(RPInfo, TEXT("ScreenSpaceShadows"));
 		RHICmdList.SetStencilRef(0);
-		
-		/*RPInfo.DepthStencilRenderTarget.Action = MakeDepthStencilTargetActions(ERenderTargetActions::Load_DontStore, ERenderTargetActions::Load_Store);
-		RPInfo.DepthStencilRenderTarget.DepthStencilTarget = SceneContext.GetSceneDepthSurface();
-		RPInfo.DepthStencilRenderTarget.ExclusiveDepthStencil = FExclusiveDepthStencil::DepthNop_StencilNop;*/
-
-		//TransitionRenderPassTargets(RHICmdList, RPInfo);
-		//RHICmdList.SetStreamSource(
-		//	0,                              // 输入槽（Slot 0）
-		//	GScreenRectangleVertexBuffer.VertexBufferRHI, // 顶点缓冲区
-		//	0                               // 偏移量（字节）
-		//);
 
 		FSceneRenderer::RenderScreenSpaceShadows(RHICmdList, LightSceneInfo, ScreenShadowMaskTexture, ScreenShadowMaskSubPixelTexture, false, false, HairDatas ? &HairDatas->HairVisibilityViews : nullptr);
-		
-		/*RHICmdList.SetStreamSource(0, GClearVertexBuffer.VertexBufferRHI, 0);
-		RHICmdList.DrawPrimitive(0, 2, 1);
-		
-		RHICmdList.SetScissorRect(false, 0, 0, 0, 0);*/
-		//RHICmdList.EndRenderPass();
-		
 	}
 	// end add
 
