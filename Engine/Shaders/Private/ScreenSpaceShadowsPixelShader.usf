@@ -7,6 +7,8 @@
 
 Texture2D SceneColorTexture;
 
+float4 LightPositionAndInvRadius; // xyzw = (position.xyz, 1/radius)
+
 void Main(
     in float4 SvPosition : SV_POSITION,
     out float4 OutColor : SV_Target0
@@ -17,6 +19,21 @@ void Main(
     FGBufferData GBuffer = GetGBufferDataFromSceneTextures(UV);
 	const float3 N = GBuffer.WorldNormal;
 	const float SceneDepth = GBuffer.Depth;
-    OutColor = float4(SceneDepth / 1000, 0, 0, 1);
+
+	// translate SvPosition to viewPos (worldPos - cameraPos)
+	float2 ScreenPos = ViewportUVToScreenPos((SvPosition.xy - View.ViewRectMin.xy) * View.ViewSizeAndInvSize.zw);
+	uint2 PixelPos = (uint2)SvPosition.xy;
+	const float3 PositionTranslatedWorld = mul(            // "TranslatedWorld"是UE的坐标系（世界空间减去相机相对原点）
+		float4(ScreenPos * SceneDepth, SceneDepth, 1), 
+		View.ScreenToTranslatedWorld
+	).xyz;
+
+	// view dir
+	const float3 V = normalize(View.TranslatedWorldCameraOrigin - PositionTranslatedWorld);
+
+
+
+
+    OutColor = LightPositionAndInvRadius;
 	//OutColor = float4(UV, 0, 1);
 }

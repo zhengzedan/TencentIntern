@@ -1713,12 +1713,14 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 					);
 					// end create
 					
-					// bind gbuffer and rt
+					// bind gbuffer, rt and light
 					PassParameters->View = View.ViewUniformBuffer; // view matrix
 					PassParameters->RenderTargets[0] = FRenderTargetBinding(ScreenSpaceShadowTexture, ERenderTargetLoadAction::EClear); // render target
 					FSceneTextureParameters SceneTextures;
 					SetupSceneTextureParameters(GraphBuilder, &SceneTextures);  // standard GBuffer Texture
 					PassParameters->SceneTextures = SceneTextures;
+					const FLightSceneProxy& LightProxy = *(ProjectedShadowInfo->GetLightSceneInfo().Proxy);
+					PassParameters->LightPositionAndInvRadius = FVector4(LightProxy.GetPosition(), 1.0 / LightProxy.GetRadius());
 					// end bind
 
 					ClearUnusedGraphResources(*ScreenSpaceShadowsPixelShader, PassParameters);
