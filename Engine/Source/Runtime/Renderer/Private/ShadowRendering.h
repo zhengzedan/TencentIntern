@@ -797,7 +797,7 @@ class FScreenSpaceShadowsProjectionPS : public FGlobalShader
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
 		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)  // 自动绑定 View 的 Uniform Buffer
 		SHADER_PARAMETER_STRUCT_INCLUDE(FSceneTextureParameters, SceneTextures)
-		SHADER_PARAMETER(FVector4, LightPositionAndInvRadius)
+		SHADER_PARAMETER(FVector4, LightPositionOrDirection)
 		SHADER_PARAMETER_RDG_TEXTURE(Texture2D, ShadowMap)  // 绑定纹理和采样器（示例：阴影贴图）
 		SHADER_PARAMETER_SAMPLER(SamplerState, ShadowSampler)
 		RENDER_TARGET_BINDING_SLOTS() // 自动处理 RenderTarget 必须包含 RenderTarget 绑定槽

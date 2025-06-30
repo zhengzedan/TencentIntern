@@ -1720,7 +1720,13 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 					SetupSceneTextureParameters(GraphBuilder, &SceneTextures);  // standard GBuffer Texture
 					PassParameters->SceneTextures = SceneTextures;
 					const FLightSceneProxy& LightProxy = *(ProjectedShadowInfo->GetLightSceneInfo().Proxy);
-					PassParameters->LightPositionAndInvRadius = FVector4(LightProxy.GetPosition(), 1.0 / LightProxy.GetRadius());
+
+					const FVector LightDirection = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetDirection();
+					const FVector LightPosition = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetPosition();
+					const bool bIsDirectional = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetLightType() == LightType_Directional;
+
+					
+					PassParameters->LightPositionOrDirection = bIsDirectional ? FVector4(LightDirection, 0) : FVector4(LightPosition, 1);
 					// end bind
 
 					ClearUnusedGraphResources(*ScreenSpaceShadowsPixelShader, PassParameters);

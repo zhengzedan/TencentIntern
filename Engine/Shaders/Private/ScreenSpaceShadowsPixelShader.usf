@@ -7,7 +7,11 @@
 
 Texture2D SceneColorTexture;
 
-float4 LightPositionAndInvRadius; // xyzw = (position.xyz, 1/radius)
+float4 LightPositionOrDirection; // xyzw = (position.xyz, 1/radius)
+
+int NumSteps = 32; 
+float Thickness = 0.02;
+
 
 void Main(
     in float4 SvPosition : SV_POSITION,
@@ -24,16 +28,45 @@ void Main(
 	float2 ScreenPos = ViewportUVToScreenPos((SvPosition.xy - View.ViewRectMin.xy) * View.ViewSizeAndInvSize.zw);
 	uint2 PixelPos = (uint2)SvPosition.xy;
 	const float3 PositionTranslatedWorld = mul(            // "TranslatedWorld"是UE的坐标系（世界空间减去相机相对原点）
-		float4(ScreenPos * SceneDepth, SceneDepth, 1), 
+		float4(ScreenPos * SceneDepth, SceneDepth, 1),     
 		View.ScreenToTranslatedWorld
 	).xyz;
 
 	// view dir
 	const float3 V = normalize(View.TranslatedWorldCameraOrigin - PositionTranslatedWorld);
 
+	// light direction
+	const float3 LightDirection = -LightPositionOrDirection.xyz;
+
+	// skip back ray
+	float NdotL = dot(N, LightDirection);
+	if (NdotL <= 0.0)
+		return 1.0;
+
+	// parameters
+	float stepSize = 1; // 后续要调整
+	float3 rayStep = LightDirection * stepSize;
+
+	// modify position to avoid self-intersection
+	float3 currenctPos = PositionTranslatedWorld + N * Thickness;
+
+	// ray tracing
+	float shadow = 1.0;
+	for (int i = 0; i < NumSteps; i++)
+	{
+		currentPos += rayStep;
+
+		// 转换到NDC空间 [-1,1]
+		float4 screenPos = float4(uv * 2.0 - 1.0, depth, 1.0);
+		screenPos.y *= -1; // 适配DX/GL差异
+    
+		// 应用ScreenToWorld矩阵
+		float4 worldPos = mul(ScreenToWorldMatrix, screenPos);
+		return worldPos.xyz / worldPos.w; // 透视除法
+	}
 
 
 
-    OutColor = LightPositionAndInvRadius;
+    OutColor = LightPositionOrDirection;
 	//OutColor = float4(UV, 0, 1);
 }

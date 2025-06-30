@@ -108,8 +108,6 @@ void Main(
 	out float4 OutColor : SV_Target0
 	)
 {
-	OutColor = LightPositionAndInvRadius;
-	return ;
 	const FPQMPContext PQMPContext = PQMPInit(SVPos.xy);
 	float2 ScreenUV = float2(SVPos.xy * View.BufferSizeAndInvSize.zw);
 	float SceneW = CalcSceneDepth(ScreenUV);
