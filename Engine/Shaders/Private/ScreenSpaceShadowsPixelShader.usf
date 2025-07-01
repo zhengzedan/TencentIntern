@@ -14,7 +14,7 @@ void Main(
     out float4 OutColor : SV_Target0
 )
 {
-	int NumSteps = 32; 
+	int NumSteps = 100; 
 	float Thickness = 0.02;
 	float ShadowIntensity = 0.1; // 阴影强度(0-1)
 
@@ -34,7 +34,7 @@ void Main(
 
 	float4 clipPos = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
 	float2 screenPos = (clipPos.xy * rcp(clipPos.w) ) * float2(0.5, -0.5) + 0.5;
-	OutColor = float4(screenPos.xy, 0, 1);
+	//OutColor = float4(screenPos.xy, 0, 1);
 
 	// view dir
 	const float3 V = normalize((View.TranslatedWorldCameraOrigin - PositionTranslatedWorld).xyz);
@@ -45,12 +45,12 @@ void Main(
 	// skip back ray
 	float NdotL = dot(N, LightDirection);
 	if (NdotL <= 0.0) {
- 		OutColor = float4(1, 1, 1, 1);
+ 		OutColor = float4(0, 0, 0, 1);
 		return ;
 	}
 
 	// parameters
-	float stepSize = 1; // 后续要调整
+	float stepSize = 10; // 后续要调整
 	float4 rayStep = float4(LightDirection * stepSize, 0);
 
 	// modify position to avoid self-intersection
@@ -64,33 +64,27 @@ void Main(
 		currentTranslateWorldPos += rayStep; // view pos
 							   
 		float4 currentClipPos = mul(currentTranslateWorldPos, View.TranslatedWorldToClip);
+		float currentSceneDepth = ConvertFromDeviceZ(currentClipPos.z * rcp(currentClipPos.w));
 		float2 currentUV = (currentClipPos.xy * rcp(currentClipPos.w)) * float2(0.5,-0.5) + 0.5;
 		
 		// check if outside the screen
 		if (any(currentUV < 0.0) || any(currentUV > 1.0))
-			break;
+			return ;
 		
 		// sample depth, and transfer to world space
 		FGBufferData currentGBuffer = GetGBufferDataFromSceneTextures(currentUV);
 		float sampleSceneDepth = currentGBuffer.Depth;
-		float2 sampleScreenPos = ViewportUVToScreenPos((currentUV * View.BufferSizeAndInvSize.xy - View.ViewRectMin.xy) * View.ViewSizeAndInvSize.zw);
-		float4 sampleTranslatedWorldPos = mul(
-			float4(sampleScreenPos * sampleSceneDepth, sampleSceneDepth, 1),
-			View.ScreenToTranslatedWorld
-		);
 
-		float depthDiff = currentTranslateWorldPos.z - sampleTranslatedWorldPos.z;
-		if (depthDiff > 0.0 && depthDiff< Thickness) // occluded, shadow
-		{
-			float fade = 1.0 - (i / float(NumSteps));
+		//float depthDiff = currentTranslateWorldPos.z - sampleTranslatedWorldPos.z;
+		float depthDiff = currentSceneDepth - sampleSceneDepth;
+		
+		if (depthDiff > 0.1 && depthDiff < 50) {
+			OutColor = float4(currentSceneDepth, sampleSceneDepth, i, 0.5);
 			OutColor = float4(0, 0, 0, 1);
+			return ;
 		}
-
 
 	}
 
 
-
-    
-	//OutColor = float4(UV, 0, 1);
 }
