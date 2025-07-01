@@ -5,12 +5,8 @@
 #include "SceneTextureParameters.ush"
 #include "ScreenSpaceDenoise/SSDPublic.ush"
 
-Texture2D SceneColorTexture;
 
 float4 LightPositionOrDirection; // xyzw = (position.xyz, 1/radius)
-
-int NumSteps = 32; 
-float Thickness = 0.02;
 
 
 void Main(
@@ -18,55 +14,83 @@ void Main(
     out float4 OutColor : SV_Target0
 )
 {
+	int NumSteps = 32; 
+	float Thickness = 0.02;
+	float ShadowIntensity = 0.1; // 阴影强度(0-1)
 
     float2 UV = SvPosition.xy * View.BufferSizeAndInvSize.zw;  // 将像素位置归一化到UV坐标，范围[0,1], View.BufferSizeAndInvSize.zw是缓冲区的倒数尺寸(如1.0/1920, 1.0/1080)
-    FGBufferData GBuffer = GetGBufferDataFromSceneTextures(UV);
+    
+	FGBufferData GBuffer = GetGBufferDataFromSceneTextures(UV);
 	const float3 N = GBuffer.WorldNormal;
 	const float SceneDepth = GBuffer.Depth;
 
 	// translate SvPosition to viewPos (worldPos - cameraPos)
 	float2 ScreenPos = ViewportUVToScreenPos((SvPosition.xy - View.ViewRectMin.xy) * View.ViewSizeAndInvSize.zw);
 	uint2 PixelPos = (uint2)SvPosition.xy;
-	const float3 PositionTranslatedWorld = mul(            // "TranslatedWorld"是UE的坐标系（世界空间减去相机相对原点）
+	const float4 PositionTranslatedWorld = mul(            // "TranslatedWorld"是UE的坐标系（世界空间减去相机相对原点）
 		float4(ScreenPos * SceneDepth, SceneDepth, 1),     
 		View.ScreenToTranslatedWorld
-	).xyz;
+	);
+
+	float4 clipPos = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
+	float2 screenPos = (clipPos.xy * rcp(clipPos.w) ) * float2(0.5, -0.5) + 0.5;
+	OutColor = float4(screenPos.xy, 0, 1);
 
 	// view dir
-	const float3 V = normalize(View.TranslatedWorldCameraOrigin - PositionTranslatedWorld);
+	const float3 V = normalize((View.TranslatedWorldCameraOrigin - PositionTranslatedWorld).xyz);
 
 	// light direction
 	const float3 LightDirection = -LightPositionOrDirection.xyz;
 
 	// skip back ray
 	float NdotL = dot(N, LightDirection);
-	if (NdotL <= 0.0)
-		return 1.0;
+	if (NdotL <= 0.0) {
+ 		OutColor = float4(1, 1, 1, 1);
+		return ;
+	}
 
 	// parameters
 	float stepSize = 1; // 后续要调整
-	float3 rayStep = LightDirection * stepSize;
+	float4 rayStep = float4(LightDirection * stepSize, 0);
 
 	// modify position to avoid self-intersection
-	float3 currenctPos = PositionTranslatedWorld + N * Thickness;
+	float4 currentTranslateWorldPos = PositionTranslatedWorld + float4(N, 0) * Thickness;
 
 	// ray tracing
 	float shadow = 1.0;
+	OutColor = float4(1, 1, 1, 1);
 	for (int i = 0; i < NumSteps; i++)
 	{
-		currentPos += rayStep;
+		currentTranslateWorldPos += rayStep; // view pos
+							   
+		float4 currentClipPos = mul(currentTranslateWorldPos, View.TranslatedWorldToClip);
+		float2 currentUV = (currentClipPos.xy * rcp(currentClipPos.w)) * float2(0.5,-0.5) + 0.5;
+		
+		// check if outside the screen
+		if (any(currentUV < 0.0) || any(currentUV > 1.0))
+			break;
+		
+		// sample depth, and transfer to world space
+		FGBufferData currentGBuffer = GetGBufferDataFromSceneTextures(currentUV);
+		float sampleSceneDepth = currentGBuffer.Depth;
+		float2 sampleScreenPos = ViewportUVToScreenPos((currentUV * View.BufferSizeAndInvSize.xy - View.ViewRectMin.xy) * View.ViewSizeAndInvSize.zw);
+		float4 sampleTranslatedWorldPos = mul(
+			float4(sampleScreenPos * sampleSceneDepth, sampleSceneDepth, 1),
+			View.ScreenToTranslatedWorld
+		);
 
-		// 转换到NDC空间 [-1,1]
-		float4 screenPos = float4(uv * 2.0 - 1.0, depth, 1.0);
-		screenPos.y *= -1; // 适配DX/GL差异
-    
-		// 应用ScreenToWorld矩阵
-		float4 worldPos = mul(ScreenToWorldMatrix, screenPos);
-		return worldPos.xyz / worldPos.w; // 透视除法
+		float depthDiff = currentTranslateWorldPos.z - sampleTranslatedWorldPos.z;
+		if (depthDiff > 0.0 && depthDiff< Thickness) // occluded, shadow
+		{
+			float fade = 1.0 - (i / float(NumSteps));
+			OutColor = float4(0, 0, 0, 1);
+		}
+
+
 	}
 
 
 
-    OutColor = LightPositionOrDirection;
+    
 	//OutColor = float4(UV, 0, 1);
 }
