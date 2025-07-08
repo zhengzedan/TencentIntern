@@ -3193,6 +3193,7 @@
     <None Include="..\..\Shaders\Private\ScreenPixelShaderOES.usf"/>
     <None Include="..\..\Shaders\Private\ScreenSpaceShadowsPixelShader.usf"/>
     <None Include="..\..\Shaders\Private\ScreenSpaceShadowsVertexShader.usf"/>
+    <None Include="..\..\Shaders\Private\ScreenSpaceShadowsCS.usf"/>
     <None Include="..\..\Shaders\Private\ScreenVertexShader.usf"/>
     <None Include="..\..\Shaders\Private\SeparableSSS.tps"/>
     <None Include="..\..\Shaders\Private\SeparableSSS.ush"/>
@@ -18552,6 +18553,8 @@
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\ScreenSpaceDenoise.h"/>
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\ScreenSpaceRayTracing.cpp"/>
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\ScreenSpaceRayTracing.h"/>
+    <ClCompile Include="..\..\Source\Runtime\Renderer\Private\ScreenSpacShadows.cpp"/>
+    <ClInclude Include="..\..\Source\Runtime\Renderer\Private\ScreenSpacShadows.h"/>
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\ShaderBaseClasses.cpp"/>
     <ClInclude Include="..\..\Source\Runtime\Renderer\Private\ShaderBaseClasses.h"/>
     <ClCompile Include="..\..\Source\Runtime\Renderer\Private\ShaderComplexityRendering.cpp"/>
