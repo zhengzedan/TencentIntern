@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?> 
+<Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003"> 
+<ItemGroup> 
+  <PlatformExtensionCompile Include="..\..\..\..\Engine\Platforms\XXX\Source\Programs\UnrealBuildTool\UEBuildXXX.cs"> 
+    <Link>Platform\XXX\UEBuildXXX.cs</Link> 
+  </PlatformExtensionCompile> 
+  <PlatformExtensionCompile Include="..\..\..\..\Engine\Platforms\XXX\Source\Programs\UnrealBuildTool\XXXToolChain.cs"> 
+    <Link>Platform\XXX\XXXToolChain.cs</Link> 
+  </PlatformExtensionCompile> 
+</ItemGroup> 
+</Project> 

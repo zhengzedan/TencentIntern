@@ -1,0 +1,55 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <None Include="..\..\Source\Programs\MinidumpDiagnostics\MinidumpDiagnostics.Target.cs" />
+    <None Include="..\..\Source\Programs\MinidumpDiagnostics\MinidumpDiagnostics.Build.cs" />
+    <Filter Include="Private">
+      <UniqueIdentifier>{EF877841-E7D7-4396-9137-8F109E4240BF}</UniqueIdentifier>
+    </Filter>
+    <ClCompile Include="..\..\Source\Programs\MinidumpDiagnostics\Private\MinidumpDiagnosticsApp.cpp">
+      <Filter>Private</Filter>
+    </ClCompile>
+    <Filter Include="Private\Mac">
+      <UniqueIdentifier>{BA52EE00-51F5-4C5A-9383-443E9A11FF57}</UniqueIdentifier>
+    </Filter>
+    <ClCompile Include="..\..\Source\Programs\MinidumpDiagnostics\Private\Mac\MinidumpDiagnosticsMainMac.cpp">
+      <Filter>Private\Mac</Filter>
+    </ClCompile>
+    <Filter Include="Private\Windows">
+      <UniqueIdentifier>{388F0AB6-E134-4860-8343-7B4759D16D1D}</UniqueIdentifier>
+    </Filter>
+    <ClCompile Include="..\..\Source\Programs\MinidumpDiagnostics\Private\Windows\MinidumpDiagnosticsMainWindows.cpp">
+      <Filter>Private\Windows</Filter>
+    </ClCompile>
+    <Filter Include="Public">
+      <UniqueIdentifier>{3F5BEDA7-8318-4D09-B9CF-4F673F28379C}</UniqueIdentifier>
+    </Filter>
+    <ClInclude Include="..\..\Source\Programs\MinidumpDiagnostics\Public\MinidumpDiagnosticsApp.h">
+      <Filter>Public</Filter>
+    </ClInclude>
+    <Filter Include="Resources">
+      <UniqueIdentifier>{F9A47506-E51E-4237-AAC9-CE8B8C888484}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Resources\Windows">
+      <UniqueIdentifier>{94A895B0-06A3-41ED-B150-5F88698DDF59}</UniqueIdentifier>
+    </Filter>
+    <Manifest Include="..\..\Source\Programs\MinidumpDiagnostics\Resources\Windows\Debug-PCLaunch-Win32.manifest">
+      <Filter>Resources\Windows</Filter>
+    </Manifest>
+    <Manifest Include="..\..\Source\Programs\MinidumpDiagnostics\Resources\Windows\Debug-PCLaunch-Win64.manifest">
+      <Filter>Resources\Windows</Filter>
+    </Manifest>
+    <None Include="..\..\Source\Programs\MinidumpDiagnostics\Resources\Windows\MinidumpDiagnostics.ico">
+      <Filter>Resources\Windows</Filter>
+    </None>
+    <Manifest Include="..\..\Source\Programs\MinidumpDiagnostics\Resources\Windows\PCLaunch-Win32.manifest">
+      <Filter>Resources\Windows</Filter>
+    </Manifest>
+    <Manifest Include="..\..\Source\Programs\MinidumpDiagnostics\Resources\Windows\PCLaunch-Win64.manifest">
+      <Filter>Resources\Windows</Filter>
+    </Manifest>
+    <ResourceCompile Include="..\..\Source\Programs\MinidumpDiagnostics\Resources\Windows\PCLaunch.rc">
+      <Filter>Resources\Windows</Filter>
+    </ResourceCompile>
+  </ItemGroup>
+</Project>
