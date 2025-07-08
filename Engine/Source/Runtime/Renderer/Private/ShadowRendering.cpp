@@ -18,6 +18,7 @@
 #include "SceneTextureParameters.h"
 
 #include "ScreenSpaceShadows.h"
+#include "RenderGraphUtils.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Directional light
@@ -1694,14 +1695,78 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 				{
 					FRDGBuilder GraphBuilder(RHICmdList);
 					// Pixel Shader
-					TShaderMapRef<FScreenSpaceShadowsProjectionPS> ScreenSpaceShadowsPixelShader(View.ShaderMap);
-					FScreenSpaceShadowsProjectionPS::FParameters* PassParameters = GraphBuilder.AllocParameters<FScreenSpaceShadowsProjectionPS::FParameters>();
+					//TShaderMapRef<FScreenSpaceShadowsProjectionPS> ScreenSpaceShadowsPixelShader(View.ShaderMap);
+					//FScreenSpaceShadowsProjectionPS::FParameters* PassParameters = GraphBuilder.AllocParameters<FScreenSpaceShadowsProjectionPS::FParameters>();
+					/*FRDGTextureRef ShadowTexture = GraphBuilder.RegisterExternalTexture(
+						ScreenShadowMaskTexture,
+						TEXT("ShadowMaskTexture")
+					);*/
+
+					//// create output texture，后续可能需要改为 UAV 纹理
+					//FRDGTextureDesc ScreenSpaceShadowTextureDesc = FRDGTextureDesc::Create2DDesc(
+					//	ShadowTexture->Desc.Extent,         // texture size
+					//	PF_FloatRGBA,						// format, e.g PF_R8G8B8A8, PF_FloatRGBA
+					//	FClearValueBinding::Black,			// clear value
+					//	TexCreate_None,						// Flags
+					//	TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, // TargetableFlags
+					//	/* bInForceSeparateTargetAndShaderResource = */ false
+					//);
+					//FRDGTextureRef ScreenSpaceShadowTexture = GraphBuilder.CreateTexture(
+					//	ScreenSpaceShadowTextureDesc,
+					//	TEXT("ScreenSpaceShadowTexture")
+					//);
+					//
+					//// bind gbuffer, rt and light
+					//PassParameters->View = View.ViewUniformBuffer; // view matrix
+					//PassParameters->RenderTargets[0] = FRenderTargetBinding(ScreenSpaceShadowTexture, ERenderTargetLoadAction::EClear); // render target
+					//FSceneTextureParameters SceneTextures;
+					//SetupSceneTextureParameters(GraphBuilder, &SceneTextures);  // standard GBuffer Texture
+					//PassParameters->SceneTextures = SceneTextures;
+					//const FLightSceneProxy& LightProxy = *(ProjectedShadowInfo->GetLightSceneInfo().Proxy);
+
+					//const FVector LightDirection = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetDirection();
+					//const FVector LightPosition = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetPosition();
+					//const bool bIsDirectional = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetLightType() == LightType_Directional;
+
+					//
+					//PassParameters->LightPositionOrDirection = bIsDirectional ? FVector4(LightDirection, 0) : FVector4(LightPosition, 1);
+					//// end bind
+
+					//ClearUnusedGraphResources(*ScreenSpaceShadowsPixelShader, PassParameters);
+
+					//GraphBuilder.AddPass(
+					//	RDG_EVENT_NAME("ScreenSpaceShadowsProjection"),
+					//	PassParameters,
+					//	ERDGPassFlags::Raster,
+					//	[ScreenSpaceShadowsPixelShader, PassParameters, &View](FRHICommandListImmediate& RHICmdList)
+					//	{
+					//		RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
+
+					//		FGraphicsPipelineStateInitializer GraphicsPSOInit;
+					//		FPixelShaderUtils::InitFullscreenPipelineState(RHICmdList, View.ShaderMap, *ScreenSpaceShadowsPixelShader, GraphicsPSOInit);
+					//		GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
+					//		SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
+
+					//		// bind shader parameters
+					//		SetShaderParameters(RHICmdList, *ScreenSpaceShadowsPixelShader, ScreenSpaceShadowsPixelShader->GetPixelShader(), *PassParameters);
+
+					//		// draw
+					//		FPixelShaderUtils::DrawFullscreenTriangle(RHICmdList);
+
+					//	}
+					//);
+
+					//GraphBuilder.Execute();
+					// end pixel shader
+					
+					// compute shader
 					FRDGTextureRef ShadowTexture = GraphBuilder.RegisterExternalTexture(
 						ScreenShadowMaskTexture,
 						TEXT("ShadowMaskTexture")
 					);
+					auto ScreenSpaceShadowsCS = View.ShaderMap->GetShader<FScreenSpaceShadowsCS>();
+					FScreenSpaceShadowsCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FScreenSpaceShadowsCS::FParameters>();
 
-					// create output texture，后续可能需要改为 UAV 纹理
 					FRDGTextureDesc ScreenSpaceShadowTextureDesc = FRDGTextureDesc::Create2DDesc(
 						ShadowTexture->Desc.Extent,         // texture size
 						PF_FloatRGBA,						// format, e.g PF_R8G8B8A8, PF_FloatRGBA
@@ -1714,53 +1779,34 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 						ScreenSpaceShadowTextureDesc,
 						TEXT("ScreenSpaceShadowTexture")
 					);
+					FRDGTextureUAV* ScreenSpaceShadowsUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(ScreenSpaceShadowTexture));
 					
-					// bind gbuffer, rt and light
-					PassParameters->View = View.ViewUniformBuffer; // view matrix
-					PassParameters->RenderTargets[0] = FRenderTargetBinding(ScreenSpaceShadowTexture, ERenderTargetLoadAction::EClear); // render target
+
+					PassParameters->RWShadowFactors = ScreenSpaceShadowsUAV;
+					PassParameters->View = View.ViewUniformBuffer;
+
 					FSceneTextureParameters SceneTextures;
 					SetupSceneTextureParameters(GraphBuilder, &SceneTextures);  // standard GBuffer Texture
 					PassParameters->SceneTextures = SceneTextures;
-					const FLightSceneProxy& LightProxy = *(ProjectedShadowInfo->GetLightSceneInfo().Proxy);
-
 					const FVector LightDirection = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetDirection();
 					const FVector LightPosition = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetPosition();
 					const bool bIsDirectional = ProjectedShadowInfo->GetLightSceneInfo().Proxy->GetLightType() == LightType_Directional;
 
-					
 					PassParameters->LightPositionOrDirection = bIsDirectional ? FVector4(LightDirection, 0) : FVector4(LightPosition, 1);
-					// end bind
 
-					ClearUnusedGraphResources(*ScreenSpaceShadowsPixelShader, PassParameters);
+					FIntRect ScissorRect = View.ViewRect;
+					// ScreenSpaceShadowsCS always outputs at rect with min = (0,0)
+					FIntRect ShadowsTextureViewRect(0, 0, ScissorRect.Width() / 2, ScissorRect.Height() / 2);
 
-					GraphBuilder.AddPass(
-						RDG_EVENT_NAME("ScreenSpaceShadowsProjection"),
+					uint32 GroupSizeX = FMath::DivideAndRoundUp(ShadowsTextureViewRect.Width(), 8);
+					uint32 GroupSizeY = FMath::DivideAndRoundUp(ShadowsTextureViewRect.Height(), 8);
+
+					FComputeShaderUtils::AddPass(
+						GraphBuilder,
+						RDG_EVENT_NAME("ScreenSpaceShadows"),
+						*ScreenSpaceShadowsCS,
 						PassParameters,
-						ERDGPassFlags::Raster,
-						[ScreenSpaceShadowsPixelShader, PassParameters, &View](FRHICommandListImmediate& RHICmdList)
-						{
-							RHICmdList.SetViewport(View.ViewRect.Min.X, View.ViewRect.Min.Y, 0.0f, View.ViewRect.Max.X, View.ViewRect.Max.Y, 1.0f);
-
-							FGraphicsPipelineStateInitializer GraphicsPSOInit;
-							FPixelShaderUtils::InitFullscreenPipelineState(RHICmdList, View.ShaderMap, *ScreenSpaceShadowsPixelShader, GraphicsPSOInit);
-							GraphicsPSOInit.BoundShaderState.VertexDeclarationRHI = GFilterVertexDeclaration.VertexDeclarationRHI;
-							SetGraphicsPipelineState(RHICmdList, GraphicsPSOInit);
-
-							// bind shader parameters
-							SetShaderParameters(RHICmdList, *ScreenSpaceShadowsPixelShader, ScreenSpaceShadowsPixelShader->GetPixelShader(), *PassParameters);
-
-							// draw
-							FPixelShaderUtils::DrawFullscreenTriangle(RHICmdList);
-
-						}
-					);
-
-					GraphBuilder.Execute();
-					// end pixel shader
-					
-					// compute shader
-					auto ScreenSpaceShadowsCS = View.ShaderMap->GetShader<FScreenSpaceShadowsCS>();
-
+						FIntVector(GroupSizeX, GroupSizeY, 1));
 
 					// end compute shader
 				}
