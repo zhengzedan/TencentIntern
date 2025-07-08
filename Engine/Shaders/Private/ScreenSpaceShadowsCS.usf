@@ -7,19 +7,18 @@
 
 
 float4 LightPositionOrDirection; // xyzw = (position.xyz, 1/radius)
-RWTexture2D<float2> RWShadowFactors;
+
 
 void Main(
     in float4 SvPosition : SV_POSITION,
     out float4 OutColor : SV_Target0
 )
 {
-	
 	int NumSteps = 100; 
 	float Thickness = 0.02;
-	float ShadowIntensity = 0.1; // é˜´å½±å¼ºåº¦(0-1)
+	float ShadowIntensity = 0.1; // ÒõÓ°Ç¿¶È(0-1)
 
-    float2 UV = SvPosition.xy * View.BufferSizeAndInvSize.zw;  // å°†åƒç´ ä½ç½®å½’ä¸€åŒ–åˆ°UVåæ ‡ï¼ŒèŒƒå›´[0,1], View.BufferSizeAndInvSize.zwæ˜¯ç¼“å†²åŒºçš„å€’æ•°å°ºå¯¸(å¦‚1.0/1920, 1.0/1080)
+    float2 UV = SvPosition.xy * View.BufferSizeAndInvSize.zw;  // ½«ÏñËØÎ»ÖÃ¹éÒ»»¯µ½UV×ø±ê£¬·¶Î§[0,1], View.BufferSizeAndInvSize.zwÊÇ»º³åÇøµÄµ¹Êı³ß´ç(Èç1.0/1920, 1.0/1080)
     
 	FGBufferData GBuffer = GetGBufferDataFromSceneTextures(UV);
 	const float3 N = GBuffer.WorldNormal;
@@ -28,7 +27,7 @@ void Main(
 	// translate SvPosition to viewPos (worldPos - cameraPos)
 	float2 ScreenPos = ViewportUVToScreenPos((SvPosition.xy - View.ViewRectMin.xy) * View.ViewSizeAndInvSize.zw);
 	uint2 PixelPos = (uint2)SvPosition.xy;
-	const float4 PositionTranslatedWorld = mul(            // "TranslatedWorld"æ˜¯UEçš„åæ ‡ç³»ï¼ˆä¸–ç•Œç©ºé—´å‡å»ç›¸æœºç›¸å¯¹åŸç‚¹ï¼‰
+	const float4 PositionTranslatedWorld = mul(            // "TranslatedWorld"ÊÇUEµÄ×ø±êÏµ£¨ÊÀ½ç¿Õ¼ä¼õÈ¥Ïà»úÏà¶ÔÔ­µã£©
 		float4(ScreenPos * SceneDepth, SceneDepth, 1),     
 		View.ScreenToTranslatedWorld
 	);
@@ -36,7 +35,6 @@ void Main(
 	float4 clipPos = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
 	float2 screenPos = (clipPos.xy * rcp(clipPos.w) ) * float2(0.5, -0.5) + 0.5;
 	//OutColor = float4(screenPos.xy, 0, 1);
-	
 
 	// view dir
 	const float3 V = normalize((View.TranslatedWorldCameraOrigin - PositionTranslatedWorld).xyz);
@@ -52,7 +50,7 @@ void Main(
 	}
 
 	// parameters
-	float stepSize = 10; // åç»­è¦è°ƒæ•´
+	float stepSize = 10; // ºóĞøÒªµ÷Õû
 	float4 rayStep = float4(LightDirection * stepSize, 0);
 
 	// modify position to avoid self-intersection

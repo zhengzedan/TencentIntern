@@ -795,6 +795,7 @@ class FScreenSpaceShadowsProjectionPS : public FGlobalShader
 
 	//// 定义参数结构
 	BEGIN_SHADER_PARAMETER_STRUCT(FParameters, )
+		SHADER_PARAMETER_RDG_TEXTURE_UAV(RWTexture2D<float2>, RWShadowFactors)
 		SHADER_PARAMETER_STRUCT_REF(FViewUniformShaderParameters, View)  // 自动绑定 View 的 Uniform Buffer
 		SHADER_PARAMETER_STRUCT_INCLUDE(FSceneTextureParameters, SceneTextures)
 		SHADER_PARAMETER(FVector4, LightPositionOrDirection)

@@ -17,6 +17,8 @@
 #include "PixelShaderUtils.h"
 #include "SceneTextureParameters.h"
 
+#include "ScreenSpaceShadows.h"
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Directional light
 static TAutoConsoleVariable<float> CVarCSMShadowDepthBias(
@@ -1691,6 +1693,7 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 				if (ProjectedShadowInfo->bAllocated)
 				{
 					FRDGBuilder GraphBuilder(RHICmdList);
+					// Pixel Shader
 					TShaderMapRef<FScreenSpaceShadowsProjectionPS> ScreenSpaceShadowsPixelShader(View.ShaderMap);
 					FScreenSpaceShadowsProjectionPS::FParameters* PassParameters = GraphBuilder.AllocParameters<FScreenSpaceShadowsProjectionPS::FParameters>();
 					FRDGTextureRef ShadowTexture = GraphBuilder.RegisterExternalTexture(
@@ -1711,7 +1714,6 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 						ScreenSpaceShadowTextureDesc,
 						TEXT("ScreenSpaceShadowTexture")
 					);
-					// end create
 					
 					// bind gbuffer, rt and light
 					PassParameters->View = View.ViewUniformBuffer; // view matrix
@@ -1754,7 +1756,13 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 					);
 
 					GraphBuilder.Execute();
+					// end pixel shader
+					
+					// compute shader
+					auto ScreenSpaceShadowsCS = View.ShaderMap->GetShader<FScreenSpaceShadowsCS>();
 
+
+					// end compute shader
 				}
 			}
 		}
