@@ -1,3 +1,6 @@
+
+#include "ScreenSpaceShadows.h"
+
 #include "ShadowRendering.h"
 #include "PrimitiveViewRelevance.h"
 #include "DepthRendering.h"
@@ -10,5 +13,6 @@
 #include "RenderCore.h"
 #include "MobileBasePassRendering.h"
 
-#include "ScreenSpaceShadows.h"
-
+IMPLEMENT_GLOBAL_SHADER(FScreenSpaceShadowsCS, "/Engine/Private/ScreenSpaceShadowsCS.usf", "Main", SF_Compute);
+const int32 GScreenSpaceShadowsTileSizeX = 8;
+const int32 GScreenSpaceShadowsTileSizeY = 8;

@@ -30,8 +30,8 @@
 /*
 SSS Compute Shader
 */
-const int32 GScreenSpaceShadowsTileSizeX = 8;
-const int32 GScreenSpaceShadowsTileSizeY = 8;
+extern const int32 GScreenSpaceShadowsTileSizeX;
+extern const int32 GScreenSpaceShadowsTileSizeY;
 
 class FScreenSpaceShadowsCS : public FGlobalShader
 {
@@ -68,4 +68,3 @@ class FScreenSpaceShadowsCS : public FGlobalShader
 
 };
 
-IMPLEMENT_GLOBAL_SHADER(FScreenSpaceShadowsCS, "/Engine/Private/ScreenSpaceShadowsCS.usf", "Main", SF_Compute);
