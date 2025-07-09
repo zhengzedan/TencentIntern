@@ -1,7 +1,3 @@
-//#include "SSRTRayCast.ush"
-//#include "Random.ush"
-//#include "BRDF.ush"
-//#include "MonteCarlo.ush"
 #include "SceneTextureParameters.ush"
 #include "ScreenSpaceDenoise/SSDPublic.ush"
 
@@ -14,7 +10,6 @@ void Main(
     out float4 OutColor : SV_Target0
 )
 {
-	
 	int NumSteps = 100; 
 	float Thickness = 0.02;
 	float ShadowIntensity = 0.1; // 阴影强度(0-1)
@@ -36,7 +31,6 @@ void Main(
 	float4 clipPos = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
 	float2 screenPos = (clipPos.xy * rcp(clipPos.w) ) * float2(0.5, -0.5) + 0.5;
 	//OutColor = float4(screenPos.xy, 0, 1);
-	
 
 	// view dir
 	const float3 V = normalize((View.TranslatedWorldCameraOrigin - PositionTranslatedWorld).xyz);

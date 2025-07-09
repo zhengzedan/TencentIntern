@@ -1764,12 +1764,13 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 						ScreenShadowMaskTexture,
 						TEXT("ShadowMaskTexture")
 					);
-					auto ScreenSpaceShadowsCS = View.ShaderMap->GetShader<FScreenSpaceShadowsCS>();
+
+					TShaderMapRef<FScreenSpaceShadowsCS> ScreenSpaceShadowsCS(View.ShaderMap);
 					FScreenSpaceShadowsCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FScreenSpaceShadowsCS::FParameters>();
 
 					FRDGTextureDesc ScreenSpaceShadowTextureDesc = FRDGTextureDesc::Create2DDesc(
 						ShadowTexture->Desc.Extent,         // texture size
-						PF_FloatRGBA,						// format, e.g PF_R8G8B8A8, PF_FloatRGBA
+						PF_G16R16F,						// format, e.g PF_R8G8B8A8, PF_FloatRGBA
 						FClearValueBinding::Black,			// clear value
 						TexCreate_None,						// Flags
 						TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, // TargetableFlags
@@ -1779,10 +1780,9 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 						ScreenSpaceShadowTextureDesc,
 						TEXT("ScreenSpaceShadowTexture")
 					);
-					FRDGTextureUAV* ScreenSpaceShadowsUAV = GraphBuilder.CreateUAV(FRDGTextureUAVDesc(ScreenSpaceShadowTexture));
 					
 
-					PassParameters->RWShadowFactors = ScreenSpaceShadowsUAV;
+					PassParameters->RWShadowFactors = GraphBuilder.CreateUAV(ScreenSpaceShadowTexture);
 					PassParameters->View = View.ViewUniformBuffer;
 
 					FSceneTextureParameters SceneTextures;
@@ -1801,12 +1801,19 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 					uint32 GroupSizeX = FMath::DivideAndRoundUp(ShadowsTextureViewRect.Width(), 8);
 					uint32 GroupSizeY = FMath::DivideAndRoundUp(ShadowsTextureViewRect.Height(), 8);
 
+					// RDG_EVENT_SCOPE(GraphBuilder, "ScreenSpaceShadows");
+					if (GroupSizeX == 0 || GroupSizeY == 0) {
+						GroupSizeX = 8;
+						return false;
+					}
+
 					FComputeShaderUtils::AddPass(
 						GraphBuilder,
 						RDG_EVENT_NAME("ScreenSpaceShadows"),
 						*ScreenSpaceShadowsCS,
 						PassParameters,
 						FIntVector(GroupSizeX, GroupSizeY, 1));
+					GraphBuilder.Execute();
 
 					// end compute shader
 				}
