@@ -13,7 +13,7 @@
 #include "RenderCore.h"
 #include "MobileBasePassRendering.h"
 
-IMPLEMENT_GLOBAL_SHADER(FScreenSpaceShadowsCS, "/Engine/Private/ScreenSpaceShadowsCS.usf", "Main", SF_Compute);
+IMPLEMENT_GLOBAL_SHADER(FScreenSpaceShadowsCS, "/Engine/Private/ScreenSpaceShadowsCS.usf", "Main_CS", SF_Compute);
 
 const int32 GScreenSpaceShadowsTileSizeX = 8;
 const int32 GScreenSpaceShadowsTileSizeY = 8;

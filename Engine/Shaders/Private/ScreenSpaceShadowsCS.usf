@@ -10,14 +10,18 @@ RWTexture2D<float2> RWShadowFactors;
 #define DownsampleFactor 2
 
 [numthreads(8, 8, 1)]
-void Main(
+void Main_CS(
     uint3 GroupId : SV_GroupID,  // 线程组ID，全局
 	uint3 DispatchThreadId : SV_DispatchThreadID,    // 全局线程ID
     uint3 GroupThreadId : SV_GroupThreadID			// 线程组内的局部线程ID
 )
 {
+	int NumSteps = 100; 
+	float Thickness = 0.02;
+	float ShadowIntensity = 0.1;
+
 	uint ThreadIndex = GroupThreadId.y * THREADGROUP_SIZEX + GroupThreadId.x;  // 局部线程索引
-	float2 ScreenUV = (DispatchThreadId.xy * DownsampleFactor + View.ViewRectMin.xy + .5f) * View.BufferSizeAndInvSize.zw;  // 范围：[0,1]
+	float2 ScreenUV = (DispatchThreadId.xy + View.ViewRectMin.xy + .5f) * View.BufferSizeAndInvSize.zw;  // 范围：[0,1]
 	float2 ScreenPosition = (ScreenUV - View.ScreenPositionScaleBias.wz) / View.ScreenPositionScaleBias.xy;  // [0, 1]的UV坐标转为[-1,1](OpenGL)或者[0,1]*[-1,1](DirectX)的NDC坐标，
 																											// 在OpenGL中，View.ScreenPositionScaleBias的值可能为(2,2,0.5,0.5)，平移+缩放
 
@@ -30,5 +34,59 @@ void Main(
 		View.ScreenToTranslatedWorld
 	);
 
-	RWShadowFactors[DispatchThreadId.xy] = float2(1, 0);
+	RWShadowFactors[DispatchThreadId.xy] = float2(0, 1);
+
+	float4 clipPos = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
+	float2 screenPos = (clipPos.xy * rcp(clipPos.w) ) * float2(0.5, -0.5) + 0.5;
+	//OutColor = float4(screenPos.xy, 0, 1);
+
+	// view dir
+	const float3 V = normalize((View.TranslatedWorldCameraOrigin - PositionTranslatedWorld).xyz);
+
+	// light direction
+	const float3 LightDirection = -LightPositionOrDirection.xyz;
+
+	// skip back ray
+	float NdotL = dot(N, LightDirection);
+	if (NdotL <= 0.0) {
+ 		RWShadowFactors[DispatchThreadId.xy] = float2(0, 0);
+		return ;
+	}
+
+	// parameters
+	float stepSize = 10; // 后续要调整
+	float4 rayStep = float4(LightDirection * stepSize, 0);
+
+	// modify position to avoid self-intersection
+	float4 currentTranslateWorldPos = PositionTranslatedWorld + float4(N, 0) * Thickness;
+
+	// ray tracing
+	float shadow = 1.0;
+
+	for (int i = 0; i < NumSteps; i++)
+	{
+		currentTranslateWorldPos += rayStep; // view pos
+							   
+		float4 currentClipPos = mul(currentTranslateWorldPos, View.TranslatedWorldToClip);
+		float currentSceneDepth = ConvertFromDeviceZ(currentClipPos.z * rcp(currentClipPos.w));
+		float2 currentUV = (currentClipPos.xy * rcp(currentClipPos.w)) * float2(0.5,-0.5) + 0.5;
+		
+		// check if outside the screen
+		if (any(currentUV < 0.0) || any(currentUV > 1.0))
+			return ;
+		
+		// sample depth, and transfer to world space
+		FGBufferData currentGBuffer = GetGBufferDataFromSceneTextures(currentUV);
+		float sampleSceneDepth = currentGBuffer.Depth;
+
+		//float depthDiff = currentTranslateWorldPos.z - sampleTranslatedWorldPos.z;
+		float depthDiff = currentSceneDepth - sampleSceneDepth;
+		
+		if (depthDiff > 0.1 && depthDiff < 50) {
+			RWShadowFactors[DispatchThreadId.xy] = float2(currentSceneDepth, sampleSceneDepth);
+			RWShadowFactors[DispatchThreadId.xy] = float2(0, 0);
+			return ;
+		}
+
+	}
 }

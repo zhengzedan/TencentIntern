@@ -19,6 +19,7 @@
 
 #include "ScreenSpaceShadows.h"
 #include "RenderGraphUtils.h"
+#include "PostProcess/PostProcessWeightedSampleSum.h"
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 // Directional light
@@ -1768,8 +1769,9 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 					TShaderMapRef<FScreenSpaceShadowsCS> ScreenSpaceShadowsCS(View.ShaderMap);
 					FScreenSpaceShadowsCS::FParameters* PassParameters = GraphBuilder.AllocParameters<FScreenSpaceShadowsCS::FParameters>();
 
+					FIntRect ScissorRect = View.ViewRect;
 					FRDGTextureDesc ScreenSpaceShadowTextureDesc = FRDGTextureDesc::Create2DDesc(
-						ShadowTexture->Desc.Extent,         // texture size
+						FIntPoint(ScissorRect.Width(), ScissorRect.Height()),         // texture size
 						PF_G16R16F,						// format, e.g PF_R8G8B8A8, PF_FloatRGBA
 						FClearValueBinding::Black,			// clear value
 						TexCreate_None,						// Flags
@@ -1780,9 +1782,9 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 						ScreenSpaceShadowTextureDesc,
 						TEXT("ScreenSpaceShadowTexture")
 					);
-					
 
-					PassParameters->RWShadowFactors = GraphBuilder.CreateUAV(ScreenSpaceShadowTexture);
+					auto SSSTextureUAV = GraphBuilder.CreateUAV(ScreenSpaceShadowTexture);
+					PassParameters->RWShadowFactors = SSSTextureUAV;
 					PassParameters->View = View.ViewUniformBuffer;
 
 					FSceneTextureParameters SceneTextures;
@@ -1794,9 +1796,9 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 
 					PassParameters->LightPositionOrDirection = bIsDirectional ? FVector4(LightDirection, 0) : FVector4(LightPosition, 1);
 
-					FIntRect ScissorRect = View.ViewRect;
+					
 					// ScreenSpaceShadowsCS always outputs at rect with min = (0,0)
-					FIntRect ShadowsTextureViewRect(0, 0, ScissorRect.Width() / 2, ScissorRect.Height() / 2);
+					FIntRect ShadowsTextureViewRect(0, 0, ScissorRect.Width(), ScissorRect.Height());
 
 					uint32 GroupSizeX = FMath::DivideAndRoundUp(ShadowsTextureViewRect.Width(), 8);
 					uint32 GroupSizeY = FMath::DivideAndRoundUp(ShadowsTextureViewRect.Height(), 8);
@@ -1807,15 +1809,18 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 						return false;
 					}
 
+
 					FComputeShaderUtils::AddPass(
 						GraphBuilder,
-						RDG_EVENT_NAME("ScreenSpaceShadows"),
+						RDG_EVENT_NAME("ScreenSpaceShadowing"),
 						*ScreenSpaceShadowsCS,
 						PassParameters,
 						FIntVector(GroupSizeX, GroupSizeY, 1));
 					GraphBuilder.Execute();
 
 					// end compute shader
+
+				
 				}
 			}
 		}
