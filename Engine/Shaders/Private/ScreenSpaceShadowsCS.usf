@@ -36,9 +36,13 @@ void Main_CS(
 		View.ScreenToTranslatedWorld
 	);
 
+	float4 test = mul(float4(0, 0, PositionTranslatedWorld.z, 1.0), View.TranslatedWorldToClip);
+	RWShadowFactors[DispatchThreadId.xy] = float2(test.z, test.w);
+	RWShadowFactors[DispatchThreadId.xy] = float2(0, 1);
+
 	const float Dither = InterleavedGradientNoise(DispatchThreadId.xy + 0.5f, View.StateFrameIndexMod8);
 
-	RWShadowFactors[DispatchThreadId.xy] = float2(0, Dither);
+	
 
 	//float4 startClipPos = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
 	//float2 startScreenPos = (startClipPos.xy * rcp(startClipPos.w) ) * float2(0.5, -0.5) + 0.5;
@@ -68,9 +72,14 @@ void Main_CS(
 	float shadow = 1.0;
 
 	// 把世界空间的深度比较改为[0,1]的深度比较
-	float rayLength = 0.16;
 	float4 startClip = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
-	float4 dirClip = mul(float4(LightDirection * 0.16, 0), View.TranslatedWorldToClip);
+	
+	float contactShadowLength = 0.2;
+	float2 TanViewFOV = GetTanHalfFieldOfView();
+	float contactShadowLengthScreenScale = (TanViewFOV.y * SceneDepth);
+
+
+	float4 dirClip = mul(float4(LightDirection * contactShadowLengthScreenScale * contactShadowLength, 0), View.TranslatedWorldToClip);
 	float4 endClip = startClip + dirClip;
 
 	float3 startScreen = startClip.xyz / startClip.w; // 这里应该可以直接用最开始计算出来的ScreenPosition
@@ -80,8 +89,13 @@ void Main_CS(
 	float3 startUVZ = float3(startScreen.xy * View.ScreenPositionScaleBias.xy + View.ScreenPositionScaleBias.wz, startScreen.z); //  这里前两个维度应该可以用ScreenUV
 	float3 stepUVZ = float3(stepScreen.xy * View.ScreenPositionScaleBias.xy, stepScreen.z);
 
-	float sampleTime = 1.0 / NumSteps;
-	RWShadowFactors[DispatchThreadId.xy] = float2(0, 1);
+
+	const float stepOffset = Dither - 0.5f;
+	float step = 1.0 / NumSteps;
+	float sampleTime = stepOffset * step + step;
+	sampleTime = 0.078;
+
+	//RWShadowFactors[DispatchThreadId.xy] = float2(0, 1);
 
 	for (int i = 0; i < NumSteps; i++)
 	{
@@ -89,11 +103,11 @@ void Main_CS(
 		FGBufferData currentGBuffer = GetGBufferDataFromSceneTextures(sampleUVZ.xy);
 		float sampleDepthWorld = currentGBuffer.Depth; // 这里的depth应该是Translated世界空间的
 
-		float4 sampleDepth4f = mul(float4(0, 0, sampleDepthWorld, 1.0), View.TranslatedWorldToClip);
-		float sampleDepth = sampleDepth4f.z / sampleDepth4f.w;
+		float sampleDepth = ConvertToDeviceZ(sampleDepthWorld);
+
 
 		float depthDiff = sampleUVZ.z - sampleDepth;
-		if (depthDiff > 0.0001) {
+		if (depthDiff < 0.0) {
 			RWShadowFactors[DispatchThreadId.xy] = float2(0, 0);
 			return ;
 		}
