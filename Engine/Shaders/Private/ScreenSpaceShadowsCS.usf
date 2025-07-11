@@ -3,6 +3,7 @@
 
 float4 LightPositionOrDirection; // xyzw = (position.xyz, 1/radius)
 RWTexture2D<float2> RWShadowFactors;
+RWTexture2D<float2> testFactors;
 
 #define THREADGROUP_SIZEX 8
 #define THREADGROUP_SIZEY 8
@@ -18,9 +19,10 @@ void Main_CS(
     uint3 GroupThreadId : SV_GroupThreadID			// 线程组内的局部线程ID
 )
 {
-	int NumSteps = 8; 
+	int NumSteps = 64; 
 	float Thickness = 0.02;
 	float ShadowIntensity = 0.1;
+	float CompareTorelanceScale = 2.0;
 
 	uint ThreadIndex = GroupThreadId.y * THREADGROUP_SIZEX + GroupThreadId.x;  // 局部线程索引
 	float2 ScreenUV = (DispatchThreadId.xy + View.ViewRectMin.xy + .5f) * View.BufferSizeAndInvSize.zw;  // 范围：[0,1]
@@ -56,10 +58,10 @@ void Main_CS(
 
 	// skip back ray
 	float NdotL = dot(N, LightDirection);
-	if (NdotL <= 0.0) {
- 		RWShadowFactors[DispatchThreadId.xy] = float2(0, 0);
-		return ;
-	}
+	//if (NdotL <= 0.0) {
+ 	//	RWShadowFactors[DispatchThreadId.xy] = float2(0, 0);
+	//	return ;
+	//}
 
 	// parameters
 	float stepSize = 10; // 后续要调整
@@ -71,15 +73,15 @@ void Main_CS(
 	// ray tracing
 	float shadow = 1.0;
 
-	// 把世界空间的深度比较改为[0,1]的深度比较
-	float4 startClip = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
-	
-	float contactShadowLength = 0.2;
+	// 把世界空间的深度比较改为NDC的深度比较
+	float contactShadowLength = 1.0;
 	float2 TanViewFOV = GetTanHalfFieldOfView();
 	float contactShadowLengthScreenScale = (TanViewFOV.y * SceneDepth);
+	float RayLength = contactShadowLengthScreenScale * contactShadowLength;
 
 
-	float4 dirClip = mul(float4(LightDirection * contactShadowLengthScreenScale * contactShadowLength, 0), View.TranslatedWorldToClip);
+	float4 startClip = mul(PositionTranslatedWorld, View.TranslatedWorldToClip);
+	float4 dirClip = mul(float4(LightDirection * RayLength, 0), View.TranslatedWorldToClip);
 	float4 endClip = startClip + dirClip;
 
 	float3 startScreen = startClip.xyz / startClip.w; // 这里应该可以直接用最开始计算出来的ScreenPosition
@@ -89,13 +91,19 @@ void Main_CS(
 	float3 startUVZ = float3(startScreen.xy * View.ScreenPositionScaleBias.xy + View.ScreenPositionScaleBias.wz, startScreen.z); //  这里前两个维度应该可以用ScreenUV
 	float3 stepUVZ = float3(stepScreen.xy * View.ScreenPositionScaleBias.xy, stepScreen.z);
 
+	float4 depthClip = startClip + mul(float4(0, 0, RayLength, 0), View.ViewToClip);
+	float3 depthScreen = depthClip.xyz / depthClip.w;
+
 
 	const float stepOffset = Dither - 0.5f;
 	float step = 1.0 / NumSteps;
 	float sampleTime = stepOffset * step + step;
-	sampleTime = 0.078;
+	//sampleTime = 0.078;
 
-	//RWShadowFactors[DispatchThreadId.xy] = float2(0, 1);
+	const float CompareTolerance = abs(depthScreen.z - startScreen.z) * step * CompareTorelanceScale;
+
+	RWShadowFactors[DispatchThreadId.xy] = float2(0, 1);
+	testFactors[DispatchThreadId.xy] = float2(0, 0);
 
 	for (int i = 0; i < NumSteps; i++)
 	{
@@ -107,10 +115,23 @@ void Main_CS(
 
 
 		float depthDiff = sampleUVZ.z - sampleDepth;
-		if (depthDiff < 0.0) {
+		bool Hit = abs(depthDiff + CompareTolerance) < CompareTolerance;
+
+
+		if (abs(DispatchThreadId.x - 871) < 0.01 && abs(DispatchThreadId.y - 588) <  0.01) {
+			testFactors[DispatchThreadId.xy] = float2(1, 0);
+			// (DispatchThreadId.xy + View.ViewRectMin.xy + .5f) * View.BufferSizeAndInvSize.zw;
+			float2 samplePixel = (sampleUVZ.xy * View.BufferSizeAndInvSize.xy) - 0.5 - View.ViewRectMin.xy;
+			uint2 samplePixelInt = uint2(samplePixel);
+			testFactors[samplePixelInt] = float2(1, 0);
+		}
+
+		if (Hit && all(0.0 < sampleUVZ.xy && sampleUVZ.xy < 1.0)) {
 			RWShadowFactors[DispatchThreadId.xy] = float2(0, 0);
 			return ;
 		}
+
+		
 
 		sampleTime += (1.0 / NumSteps);
 		

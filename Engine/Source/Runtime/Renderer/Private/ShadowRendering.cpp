@@ -1787,6 +1787,24 @@ bool FSceneRenderer::RenderScreenSpaceShadows(FRHICommandListImmediate& RHICmdLi
 					PassParameters->RWShadowFactors = SSSTextureUAV;
 					PassParameters->View = View.ViewUniformBuffer;
 
+					// test
+					FRDGTextureDesc testDesc = FRDGTextureDesc::Create2DDesc(
+						FIntPoint(ScissorRect.Width(), ScissorRect.Height()),         // texture size
+						PF_G16R16F,						// format, e.g PF_R8G8B8A8, PF_FloatRGBA
+						FClearValueBinding::Black,			// clear value
+						TexCreate_None,						// Flags
+						TexCreate_ShaderResource | TexCreate_RenderTargetable | TexCreate_UAV, // TargetableFlags
+						/* bInForceSeparateTargetAndShaderResource = */ false
+					);
+					FRDGTextureRef testTexture = GraphBuilder.CreateTexture(
+						testDesc,
+						TEXT("test")
+					);
+
+					auto testUAV = GraphBuilder.CreateUAV(testTexture);
+					PassParameters->testFactors = testUAV;
+					// end test
+
 					FSceneTextureParameters SceneTextures;
 					SetupSceneTextureParameters(GraphBuilder, &SceneTextures);  // standard GBuffer Texture
 					PassParameters->SceneTextures = SceneTextures;
