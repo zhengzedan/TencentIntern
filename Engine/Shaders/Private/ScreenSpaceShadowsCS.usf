@@ -102,7 +102,8 @@ void Main_CS(
 
 	const float CompareTolerance = abs(depthScreen.z - startScreen.z) * step * CompareTorelanceScale;
 
-	RWShadowFactors[DispatchThreadId.xy] = float2(0, 1);
+	RWShadowFactors[DispatchThreadId.xy] = float2(1.0, SceneDepth);
+
 	testFactors[DispatchThreadId.xy] = float2(0, 0);
 
 	for (int i = 0; i < NumSteps; i++)
@@ -115,19 +116,21 @@ void Main_CS(
 
 
 		float depthDiff = sampleUVZ.z - sampleDepth;
-		bool Hit = abs(depthDiff + CompareTolerance) < CompareTolerance;
+		bool selfOcclusion = abs(startUVZ.z - sampleDepth) < 1e-5;
+		bool Hit = abs(depthDiff + CompareTolerance) < CompareTolerance && !selfOcclusion;
 
 
-		if (abs(DispatchThreadId.x - 871) < 0.01 && abs(DispatchThreadId.y - 588) <  0.01) {
-			testFactors[DispatchThreadId.xy] = float2(1, 0);
+		if (abs(DispatchThreadId.x - 233) < 0.01 && abs(DispatchThreadId.y - 250) <  0.01) {
+			testFactors[DispatchThreadId.xy] = float2(1.0, 0.0);
 			// (DispatchThreadId.xy + View.ViewRectMin.xy + .5f) * View.BufferSizeAndInvSize.zw;
 			float2 samplePixel = (sampleUVZ.xy * View.BufferSizeAndInvSize.xy) - 0.5 - View.ViewRectMin.xy;
 			uint2 samplePixelInt = uint2(samplePixel);
-			testFactors[samplePixelInt] = float2(1, 0);
+			testFactors[samplePixelInt] = float2(1.0, 0.0);
 		}
 
+
 		if (Hit && all(0.0 < sampleUVZ.xy && sampleUVZ.xy < 1.0)) {
-			RWShadowFactors[DispatchThreadId.xy] = float2(0, 0);
+			RWShadowFactors[DispatchThreadId.xy] = float2(0.0, SceneDepth);
 			return ;
 		}
 
